@@ -8,13 +8,15 @@ public class UserData {
     private final String chatInfo;
     private final String time;
     private final String streak;
+    private final String emojis;
 
-    public UserData(String name, AccessibilityNodeInfo userInfo, String chatInfo, String time, String streak) {
+    public UserData(String name, AccessibilityNodeInfo userInfo, String chatInfo, String time, String streak, String emojis) {
         this.name = name;
         this.userInfo = userInfo;
         this.chatInfo = chatInfo;
         this.time = time;
         this.streak = streak;
+        this.emojis = emojis;
     }
 
     public String getName() {
@@ -35,6 +37,10 @@ public class UserData {
 
     public String getStreak() {
         return streak;
+    }
+
+    public String getEmojis() {
+        return emojis;
     }
 
     public boolean hasNewChat() {

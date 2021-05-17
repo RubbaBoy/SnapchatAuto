@@ -9,13 +9,12 @@ import androidx.annotation.NonNull;
 import androidx.car.app.CarContext;
 import androidx.car.app.Screen;
 import androidx.car.app.model.Action;
-import androidx.car.app.model.CarText;
 import androidx.car.app.model.ItemList;
 import androidx.car.app.model.ListTemplate;
 import androidx.car.app.model.Row;
 import androidx.car.app.model.Template;
 
-import com.uddernetworks.snapchatauto.Utils;
+import com.uddernetworks.snapchatauto.Utility;
 import com.uddernetworks.snapchatauto.service.SnapAccessibilityService;
 import com.uddernetworks.snapchatauto.service.UserData;
 
@@ -51,9 +50,9 @@ public class ContactListScreen extends Screen {
         var trailing = " · " + data.getTime() + streak;
 
         if (info.startsWith("New Chat")) {
-            prefix = Utils.colorize("New Chat", trailing, BLUE);
+            prefix = Utility.color("New Chat", trailing, BLUE);
         } else if (info.startsWith("New Snap")) {
-            prefix = Utils.colorize("New Snap", trailing, RED);
+            prefix = Utility.color("New Snap", trailing, RED);
         } else {
             prefix = new SpannableString(info + trailing);
         }
@@ -67,6 +66,11 @@ public class ContactListScreen extends Screen {
                     //                new SelectableListsDemoScreen(
                     //                        getCarContext()))
                     System.out.println("Clicked " + data.getName());
+
+                    var service = SnapAccessibilityService.getInstance();
+                    service.refresh();
+
+                    invalidate();
                 })
                 .build();
     }
