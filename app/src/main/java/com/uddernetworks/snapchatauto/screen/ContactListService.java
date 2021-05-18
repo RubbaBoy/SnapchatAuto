@@ -1,27 +1,26 @@
 package com.uddernetworks.snapchatauto.screen;
 
+import android.content.Intent;
 import android.content.pm.ApplicationInfo;
-import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.car.app.CarAppService;
+import androidx.car.app.Screen;
 import androidx.car.app.Session;
 import androidx.car.app.validation.HostValidator;
 
-public class MainService extends CarAppService {
-    public static final String SHARED_PREF_KEY = "ShowcasePrefs";
-    public static final String PRE_SEED_KEY = "PreSeed";
-
-//    /** Creates a deep link URI with the given deep link action. */
-//    @NonNull
-//    public static Uri createDeepLinkUri(@NonNull String deepLinkAction) {
-//        return Uri.fromParts(ShowcaseSession.URI_SCHEME, ShowcaseSession.URI_HOST, deepLinkAction);
-//    }
+public class ContactListService extends CarAppService {
 
     @Override
     @NonNull
     public Session onCreateSession() {
-        return new MainSession();
+        return new Session() {
+            @NonNull
+            @Override
+            public Screen onCreateScreen(@NonNull Intent intent) {
+                return new ContactListScreen(getCarContext());
+            }
+        };
     }
 
     @NonNull

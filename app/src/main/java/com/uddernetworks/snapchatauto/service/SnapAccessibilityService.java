@@ -1,5 +1,6 @@
 package com.uddernetworks.snapchatauto.service;
 
+import static com.uddernetworks.snapchatauto.Utility.getChildren;
 import static com.uddernetworks.snapchatauto.Utility.sleep;
 
 import android.accessibilityservice.AccessibilityService;
@@ -11,13 +12,18 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import com.uddernetworks.snapchatauto.Utility;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class SnapAccessibilityService extends AccessibilityService implements SnapchatService {
 
     private static SnapAccessibilityService instance;
     private boolean first = true;
+    private final List<SnapEventHandler> handlers = new ArrayList<>();
 
     @Override
     protected void onServiceConnected() {
@@ -33,8 +39,24 @@ public class SnapAccessibilityService extends AccessibilityService implements Sn
 
         first = true;
 
+//        var snapHandler = new SnapEventHandler() {
+//            @Override
+//            public void onTypingUpdate(List<UserData> typingUsers) {
+//                System.out.println("Typing: " + typingUsers.stream().map(UserData::getName).collect(Collectors.joining(", ")));
+//            }
+//
+//            @Override
+//            public void update() {
+//                System.out.println("Update!");
+//            }
+//        };
+//        addEventHandler(snapHandler);
+
         init();
     }
+
+    private List<UserData> lastTyping;
+    private List<UserData> allUsers;
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -50,11 +72,14 @@ public class SnapAccessibilityService extends AccessibilityService implements Sn
 
                 var root = getRootInActiveWindow(); // FrameLayout
 
-                click(NavButton.CHAT.getButton(this));
+                NavButton.CHAT.getButton(this).ifPresent(SnapAccessibilityService::click);
+
+                sleep(500);
 
                 root = getRootInActiveWindow();
                 var chatText = root.findAccessibilityNodeInfosByText("Chat");
                 if (chatText.isEmpty()) {
+                    System.out.println("Chat empty");
                     return;
                 }
 
@@ -75,14 +100,46 @@ public class SnapAccessibilityService extends AccessibilityService implements Sn
                     return;
                 }
 
-                do {
-                    System.out.print(source.getClassName() + " ");
-                } while ((source = source.getParent()) != null);
-                System.out.println();
+                // Might be a typing or update
+                if (source.getClassName().equals("androidx.recyclerview.widget.RecyclerView")) {
+//                    var userViews = Utility.getFromPath(getRootInActiveWindow(), "androidx.recyclerview.widget.RecyclerView", "android.widget.FrameLayout", "android.view.View")
+//                            .stream()
+//                            .map(this::userDataFromView)
+//                            .filter(Optional::isPresent)
+//                            .map(Optional::get)
+//                            .collect(Collectors.toList());
+
+                    sleep(500);
+
+                    var userViews = getUsers();
+
+                    var typingUsers = userViews
+                            .stream()
+                            .filter(UserData::isTyping)
+                            .collect(Collectors.toList());
+
+                    if (!typingUsers.equals(lastTyping)) {
+                        handlers.forEach(handler -> handler.onTypingUpdate(typingUsers));
+                        lastTyping = typingUsers;
+                    }
+
+                    if (!userViews.equals(allUsers)) {
+                        allUsers = userViews;
+                        handlers.forEach(SnapEventHandler::update);
+                    }
+                }
             }
         }
+    }
 
-        // androidx.recyclerview.widget.RecyclerView getClassName() for typing
+    @Override
+    public void addEventHandler(SnapEventHandler handler) {
+        handlers.add(handler);
+    }
+
+    @Override
+    public void removeEventHandler(SnapEventHandler handler) {
+        handlers.remove(handler);
     }
 
     @Override
@@ -92,41 +149,73 @@ public class SnapAccessibilityService extends AccessibilityService implements Sn
         var users = new ArrayList<UserData>();
 
         for (var userNode : Utility.getFromPath(root, "androidx.recyclerview.widget.RecyclerView", "android.widget.FrameLayout", "android.view.View")) { // Views
-            var userTexts = Utility.getFromPath(userNode, "javaClass")
-                    .stream()
-                    .map(AccessibilityNodeInfo::getText)
-                    .map(CharSequence::toString)
-                    .toArray(String[]::new);
-
-            String emojis = null, streak = null;
-            var offset = 0;
-            if (userTexts.length == 3) {
-                emojis = userTexts[0];
-                offset = 1;
-            }
-
-            var text = userTexts[offset + 1].split(" {5}");
-            if (text.length == 1 && text[0].equals("Double tap to reply")) {
-                sleep(100);
+            var userOptional = userDataFromView(userNode);
+            if (!userOptional.isPresent()) {
+                System.out.println("Not present!");
+//                sleep(100);
+//                return getUsers();
                 continue;
             }
 
-            if (text.length >= 3) {
-                streak = text[2];
-            }
-
-            if (text.length >= 2) {
-                users.add(new UserData(userTexts[offset], userNode, text[0], text[1], streak, emojis));
-            }
+            users.add(userOptional.get());
         }
 
         return users;
     }
 
+    /**
+     * Creates a {@link UserData} from a android.view.View
+     * @param view The view of class type android.view.View
+     * @return The {@link UserData}. If empty, it should be retried
+     */
+    private Optional<UserData> userDataFromView(AccessibilityNodeInfo view) {
+        var userTexts = Utility.getFromPath(view, "javaClass")
+                .stream()
+                .map(AccessibilityNodeInfo::getText)
+                .map(CharSequence::toString)
+                .toArray(String[]::new);
+
+        String emojis = null, streak = null, chatInfo = null, time = null;
+        var typing = false;
+        var offset = 0;
+        if (userTexts.length == 3) {
+            emojis = userTexts[0];
+            offset = 1;
+        }
+
+        var text = userTexts[offset + 1].split(" {5}");
+//        System.out.println("text = " + Arrays.toString(text));
+
+        if (text.length == 1) {
+            if (text[0].equals("Double tap to reply")) {
+                return Optional.empty();
+            } else if (text[0].equals("Typing...")) {
+                typing = true;
+            }
+        } else {
+            chatInfo = text[0];
+            time = text[1];
+        }
+
+        if (text.length >= 3) {
+            streak = text[2];
+        }
+
+        return Optional.of(new UserData(userTexts[offset], view, chatInfo, time, streak, emojis, typing));
+    }
+
     @Override
     public void refresh() {
-        click(NavButton.CAMERA.getButton(this));
-        click(NavButton.CHAT.getButton(this));
+        var camOp = NavButton.CAMERA.getButton(this);
+        var chatOp = NavButton.CHAT.getButton(this);
+        if (!camOp.isPresent() || !chatOp.isPresent()) {
+            System.out.println("Not present!!!!!!!!!!!!!!!!!!!!");
+            sleep(100);
+            refresh();
+        } else {
+            click(camOp.get());
+            click(chatOp.get());
+        }
     }
 
     @Override
@@ -190,14 +279,14 @@ public class SnapAccessibilityService extends AccessibilityService implements Sn
         STORIES,
         SPOTLIGHT;
 
-        public AccessibilityNodeInfo getButton(AccessibilityService service) {
+        public Optional<AccessibilityNodeInfo> getButton(AccessibilityService service) {
             var root = service.getRootInActiveWindow();
             if (root == null) {
                 System.out.println("UH OH ROOT NULL!!!!");
+                return Optional.empty();
             }
-
             var bottomRow = root.getChild(root.getChildCount() - 1);
-            return bottomRow.getChild(ordinal());
+            return Optional.ofNullable(bottomRow.getChild(ordinal()));
         }
     }
 

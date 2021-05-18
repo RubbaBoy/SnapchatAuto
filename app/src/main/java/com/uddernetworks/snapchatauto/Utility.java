@@ -100,7 +100,10 @@ public abstract class Utility {
     public static List<AccessibilityNodeInfo> getChildren(AccessibilityNodeInfo node) {
         var list = new ArrayList<AccessibilityNodeInfo>();
         for (int i = 0; i < node.getChildCount(); i++) {
-            list.add(node.getChild(i));
+            var child = node.getChild(i);
+            if (child != null) {
+                list.add(child);
+            }
         }
         return list;
     }

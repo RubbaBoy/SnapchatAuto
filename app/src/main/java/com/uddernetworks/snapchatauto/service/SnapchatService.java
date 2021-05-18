@@ -4,6 +4,11 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public interface SnapchatService {
+
+    void addEventHandler(SnapEventHandler handler);
+
+    void removeEventHandler(SnapEventHandler handler);
+
     List<UserData> getUsers();
 
     default CompletableFuture<List<UserData>> getUsersAsync() {
