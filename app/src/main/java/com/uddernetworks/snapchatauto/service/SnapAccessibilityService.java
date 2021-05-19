@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class SnapAccessibilityService extends AccessibilityService implements SnapchatService {
@@ -100,8 +101,10 @@ public class SnapAccessibilityService extends AccessibilityService implements Sn
                     return;
                 }
 
+
                 // Might be a typing or update
                 if (source.getClassName().equals("androidx.recyclerview.widget.RecyclerView")) {
+//                    CompletableFuture.runAsync(() -> {
 //                    var userViews = Utility.getFromPath(getRootInActiveWindow(), "androidx.recyclerview.widget.RecyclerView", "android.widget.FrameLayout", "android.view.View")
 //                            .stream()
 //                            .map(this::userDataFromView)
@@ -109,24 +112,25 @@ public class SnapAccessibilityService extends AccessibilityService implements Sn
 //                            .map(Optional::get)
 //                            .collect(Collectors.toList());
 
-                    sleep(500);
+//                        sleep(100);
 
-                    var userViews = getUsers();
+                        var userViews = getUsers();
 
-                    var typingUsers = userViews
-                            .stream()
-                            .filter(UserData::isTyping)
-                            .collect(Collectors.toList());
+                        var typingUsers = userViews
+                                .stream()
+                                .filter(UserData::isTyping)
+                                .collect(Collectors.toList());
 
-                    if (!typingUsers.equals(lastTyping)) {
-                        handlers.forEach(handler -> handler.onTypingUpdate(typingUsers));
-                        lastTyping = typingUsers;
-                    }
+                        if (!typingUsers.equals(lastTyping)) {
+                            handlers.forEach(handler -> handler.onTypingUpdate(typingUsers));
+                            lastTyping = typingUsers;
+                        }
 
-                    if (!userViews.equals(allUsers)) {
-                        allUsers = userViews;
-                        handlers.forEach(SnapEventHandler::update);
-                    }
+                        if (!userViews.equals(allUsers)) {
+                            allUsers = userViews;
+                            handlers.forEach(SnapEventHandler::update);
+                        }
+//                    });
                 }
             }
         }
@@ -165,6 +169,7 @@ public class SnapAccessibilityService extends AccessibilityService implements Sn
 
     /**
      * Creates a {@link UserData} from a android.view.View
+     *
      * @param view The view of class type android.view.View
      * @return The {@link UserData}. If empty, it should be retried
      */
@@ -225,13 +230,15 @@ public class SnapAccessibilityService extends AccessibilityService implements Sn
 
     /**
      * Waits for a node with the given text to exist
+     *
      * @param text The text
      */
     private void waitFor(String text) {
         while (getRootInActiveWindow().findAccessibilityNodeInfosByText(text).isEmpty()) {
             try {
                 Thread.sleep(50);
-            } catch (InterruptedException e) {}
+            } catch (InterruptedException e) {
+            }
         }
     }
 

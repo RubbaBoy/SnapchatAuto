@@ -37,4 +37,5 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
     implementation 'androidx.core:core:1.6.0-alpha03'
     implementation 'androidx.car.app:app:1.0.0'
+    implementation 'com.google.guava:guava:28.1-jre'
 }

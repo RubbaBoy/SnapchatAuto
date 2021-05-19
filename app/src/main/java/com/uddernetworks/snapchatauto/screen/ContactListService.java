@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 import androidx.car.app.CarAppService;
 import androidx.car.app.Screen;
 import androidx.car.app.Session;
+import androidx.car.app.model.Template;
 import androidx.car.app.validation.HostValidator;
 
 public class ContactListService extends CarAppService {
@@ -18,7 +19,7 @@ public class ContactListService extends CarAppService {
             @NonNull
             @Override
             public Screen onCreateScreen(@NonNull Intent intent) {
-                return new ContactListScreen(getCarContext());
+                return new HomeScreen(getCarContext());
             }
         };
     }
